@@ -1,5 +1,5 @@
 'use client'
-
+/* eslint-disable react/no-unescaped-entities */
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '@/components/ui/card'
