@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, EyeOff, User, Mail, Lock, ArrowLeft, UserCheck, Briefcase, Check } from "lucide-react";
 
-
 interface SignUpFormData {
   name: string;
   email: string;
@@ -36,21 +35,20 @@ const SignUpPage = () => {
   const onSubmit = async (data: SignUpFormData) => {
     try {
       console.log("Sign-up data:", data);
-      
 
       const { registerUser } = await import('../../utils/api');
-      
- 
+
       const result = await registerUser(data.name, data.email, data.password, data.role);
-      
+
       alert(`Registration successful! Welcome, ${result.data.name}!`);
 
+      // Redirect to onboarding page based on role
       if (data.role === 'buyer') {
-        router.push('/buyerDashboard');
+        router.push('/buyerOnboarding');
       } else if (data.role === 'seller') {
-        router.push('/sellerDashboard');
+        router.push('/sellerOnboarding');
       }
-      
+
     } catch (error: any) {
       console.error("Sign-up error:", error);
       alert(`Registration failed: ${error.message || 'Please try again.'}`);
@@ -59,16 +57,16 @@ const SignUpPage = () => {
 
   const handleBackClick = () => router.push("/");
 
- const handleSwitchToSignIn = () => {
-  const selectedRole = watch("role");
-  if (selectedRole === "buyer") {
-    router.push("/buyerSignIn");
-  } else if (selectedRole === "seller") {
-    router.push("/sellerSignIn");
-  } else {
-    router.push("/buyerSignIn"); 
-  }
-};
+  const handleSwitchToSignIn = () => {
+    const selectedRole = watch("role");
+    if (selectedRole === "buyer") {
+      router.push("/buyerSignIn");
+    } else if (selectedRole === "seller") {
+      router.push("/sellerSignIn");
+    } else {
+      router.push("/buyerSignIn"); 
+    }
+  };
 
   return (
     <motion.div
@@ -99,37 +97,31 @@ const SignUpPage = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          
 
             <div className="space-y-3">
-            <Label>I want to join as a</Label>
-            <div className="grid grid-cols-2 gap-3">
-         
+              <Label>I want to join as a</Label>
+              <div className="grid grid-cols-2 gap-3">
+
                 <div className="relative">
-                <input
+                  <input
                     type="radio"
                     id="buyer"
                     value="buyer"
                     className="peer sr-only"
                     {...register("role", { required: "Please select a role" })}
-                />
-                <Label
+                  />
+                  <Label
                     htmlFor="buyer"
                     className="relative flex flex-col items-center justify-center p-4 bg-background border-2 border-input rounded-lg cursor-pointer hover:bg-accent peer-checked:border-primary peer-checked:bg-primary/5 transition-all h-full"
-                >
+                  >
                     <UserCheck className="h-6 w-6 mb-2 text-primary" />
                     <span className="font-medium">Buyer</span>
                     <span className="text-xs text-muted-foreground text-center flex-1">
-                    Looking to acquire businesses
+                      Looking to acquire businesses
                     </span>
-                    {/* Tick mark (only visible when selected) */}
                     <Check className="absolute top-2 right-2 h-4 w-4 text-primary opacity-0 peer-checked:opacity-100 transition-opacity" />
-                </Label>
+                  </Label>
                 </div>
-
-
-            
-
 
                 <div className="relative">
                   <input
@@ -156,7 +148,6 @@ const SignUpPage = () => {
               )}
             </div>
 
-      
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <div className="relative">
@@ -176,7 +167,6 @@ const SignUpPage = () => {
               )}
             </div>
 
-      
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <div className="relative">
@@ -200,7 +190,6 @@ const SignUpPage = () => {
               )}
             </div>
 
-  
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
@@ -267,7 +256,6 @@ const SignUpPage = () => {
               )}
             </div>
 
-       
             <Button
               type="submit"
               size="lg"
@@ -277,7 +265,6 @@ const SignUpPage = () => {
               {isSubmitting ? "Creating Account..." : "Create Account"}
             </Button>
 
-      
             <div className="text-center text-sm">
               <span className="text-muted-foreground">Already have an account? </span>
               <Button

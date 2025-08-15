@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef } from "react";
-import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+import { motion, useMotionValue, useTransform, PanInfo, animate } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,6 @@ import {
   X, 
   Star, 
   MapPin, 
-  Building, 
   DollarSign, 
   Clock,
   TrendingUp,
@@ -18,12 +17,11 @@ import {
 } from "lucide-react";
 import { useSwipedMatches, SwipedMatch } from '@/contexts/SwipedMatchesContext';
 
-
 interface SwipeInterfaceProps {
   userType: 'buyer' | 'seller';
 }
 
-// Mock data for both buyers and deals
+
 const generateMockData = (userType: 'buyer' | 'seller'): SwipedMatch[] => {
   const buyerData: SwipedMatch[] = [
     {
@@ -109,7 +107,7 @@ const generateMockData = (userType: 'buyer' | 'seller'): SwipedMatch[] => {
     }
   ];
 
-  // Add more dummy data to reach 20 items
+  // Added more dummy data to reach 20 items
   const additionalData = Array.from({ length: 17 }, (_, i) => ({
     id: `${userType}${i + 4}`,
     name: userType === 'buyer' ? `Business Deal ${i + 4}` : `Investor ${i + 4}`,
@@ -133,10 +131,10 @@ const generateMockData = (userType: 'buyer' | 'seller'): SwipedMatch[] => {
     : [...sellerData, ...additionalData];
 };
 
+
 const SwipeInterface = ({ userType }: SwipeInterfaceProps) => {
   const { addRightSwipe, addLeftSwipe } = useSwipedMatches();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [exitX, setExitX] = useState(0);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const mockData = generateMockData(userType);
 
@@ -144,49 +142,53 @@ const SwipeInterface = ({ userType }: SwipeInterfaceProps) => {
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacity = useTransform(x, [-200, -125, 0, 125, 200], [0, 1, 1, 1, 0]);
 
-  const handleDragEnd = (event: any, info: PanInfo) => {
-    const threshold = 100;
+  const handleSwipe = (direction: 'right' | 'left', animateX = true) => {
     const currentCard = mockData[currentIndex];
-    
-    if (Math.abs(info.offset.x) > threshold && currentCard) {
-      const direction = info.offset.x > 0 ? 'right' : 'left';
-      
-      // Add to context based on swipe direction
-      if (direction === 'right') {
-        addRightSwipe(currentCard);
-      } else {
-        addLeftSwipe(currentCard);
-      }
-      
-      setExitX(info.offset.x > 0 ? 200 : -200);
+    if (!currentCard) return;
+
+    if (direction === 'right') addRightSwipe(currentCard);
+    else addLeftSwipe(currentCard);
+
+    const targetX = direction === 'right' ? 200 : -200;
+
+    if (animateX) {
+      // Smooth animation for keyboard
+      const controls = animate(x, targetX, { type: 'spring', stiffness: 300, damping: 30 });
+      controls.then(() => {
+        setCurrentIndex(prev => prev + 1);
+        x.set(0);
+      });
+    } else {
+      x.set(targetX);
       setTimeout(() => {
         setCurrentIndex(prev => prev + 1);
-        setExitX(0);
         x.set(0);
       }, 200);
+    }
+  };
+
+  const handleDragEnd = (_: any, info: PanInfo) => {
+    const threshold = 100;
+    if (Math.abs(info.offset.x) > threshold) {
+      handleSwipe(info.offset.x > 0 ? 'right' : 'left', false);
     } else {
       x.set(0);
     }
   };
 
   const handleAction = (action: 'like' | 'pass') => {
-    const currentCard = mockData[currentIndex];
-    
-    if (currentCard) {
-      if (action === 'like') {
-        addRightSwipe(currentCard);
-      } else {
-        addLeftSwipe(currentCard);
-      }
-    }
-    
-    setExitX(action === 'like' ? 200 : -200);
-    setTimeout(() => {
-      setCurrentIndex(prev => prev + 1);
-      setExitX(0);
-      x.set(0);
-    }, 200);
+    handleSwipe(action === 'like' ? 'right' : 'left', true);
   };
+
+  // --- Keyboard support ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') handleAction('like');
+      if (e.key === 'ArrowLeft') handleAction('pass');
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex]);
 
   if (currentIndex >= mockData.length) {
     return (
@@ -224,8 +226,8 @@ const SwipeInterface = ({ userType }: SwipeInterfaceProps) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-accent/20 flex items-center justify-center px-4 py-8">
-      <div className="relative w-full max-w-sm mx-auto">
-        {/* Background cards for depth */}
+      <div className="relative w-full max-w-sm sm:max-w-md mx-auto">
+        {/* Background cards */}
         {mockData.slice(currentIndex + 1, currentIndex + 3).map((card, index) => (
           <motion.div
             key={card.id}
@@ -236,7 +238,7 @@ const SwipeInterface = ({ userType }: SwipeInterfaceProps) => {
               zIndex: -index - 1
             }}
           >
-            <Card className="w-full h-[600px] bg-card/60 backdrop-blur" />
+            <Card className="w-full h-[600px] sm:h-[600px] bg-card/60 backdrop-blur" />
           </motion.div>
         ))}
 
@@ -248,63 +250,59 @@ const SwipeInterface = ({ userType }: SwipeInterfaceProps) => {
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
           onDragEnd={handleDragEnd}
-          animate={{ x: exitX }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
-          <Card className="w-full h-[600px] swipe-card cursor-grab active:cursor-grabbing">
-            <div className="relative h-full">
-              {/* Header with avatar and verification */}
-              <div className="p-6 border-b">
-                <div className="flex items-start gap-4">
-                  <div className="relative">
-                    <img 
-                      src={currentCard.avatar}
-                      alt={currentCard.name}
-                      className="w-16 h-16 rounded-full object-cover"
-                    />
-                    {currentCard.badge === "Premium" && (
-                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                        <Shield className="h-3 w-3 text-white" />
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-xl font-bold text-foreground truncate">
-                        {currentCard.name}
-                      </h3>
-                      <Badge variant={currentCard.badge === "Premium" ? "default" : "secondary"}>
-                        {currentCard.badge}
-                      </Badge>
+          <Card className="w-full h-[600px] sm:h-[600px] swipe-card cursor-grab active:cursor-grabbing">
+            <div className="relative h-full flex flex-col">
+              {/* Header */}
+              <div className="p-4 sm:p-6 border-b flex items-start gap-4">
+                <div className="relative">
+                  <img 
+                    src={currentCard.avatar}
+                    alt={currentCard.name}
+                    className="w-12 sm:w-16 h-12 sm:h-16 rounded-full object-cover"
+                  />
+                  {currentCard.badge === "Premium" && (
+                    <div className="absolute -top-1 -right-1 w-5 sm:w-6 h-5 sm:h-6 bg-primary rounded-full flex items-center justify-center">
+                      <Shield className="h-3 w-3 text-white" />
                     </div>
-                    <p className="text-muted-foreground font-medium">{currentCard.company}</p>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                      <MapPin className="h-3 w-3" />
-                      {currentCard.location}
-                    </div>
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-lg sm:text-xl font-bold text-foreground truncate">
+                      {currentCard.name}
+                    </h3>
+                    <Badge variant={currentCard.badge === "Premium" ? "default" : "secondary"} className="text-xs sm:text-sm">
+                      {currentCard.badge}
+                    </Badge>
                   </div>
+                  <p className="text-xs sm:text-sm text-muted-foreground font-medium truncate">{currentCard.company}</p>
+                  <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground mt-1">
+                    <MapPin className="h-3 w-3" />
+                    {currentCard.location}
+                  </div>
+                </div>
 
-                  <div className="text-right">
-                    <div className="flex items-center gap-1 mb-1">
-                      <TrendingUp className="h-4 w-4 text-success" />
-                      <span className="font-semibold text-success">95%</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Readiness Score</p>
+                <div className="text-right">
+                  <div className="flex items-center gap-1 mb-1">
+                    <TrendingUp className="h-4 w-4 text-success" />
+                    <span className="font-semibold text-success text-xs sm:text-sm">95%</span>
                   </div>
+                  <p className="text-xs text-muted-foreground">Readiness Score</p>
                 </div>
               </div>
 
-              {/* Investment details */}
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              {/* Body */}
+              <div className="p-4 sm:p-6 flex-1 space-y-3 sm:space-y-4 overflow-auto">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-primary" />
                     <div>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         {userType === 'buyer' ? 'Asking Price' : 'Investment Range'}
                       </p>
-                      <p className="font-semibold">
+                      <p className="font-semibold text-sm sm:text-base">
                         {userType === 'buyer' 
                           ? formatCurrency(currentCard.value || 0)
                           : `${formatCurrency(1000000)} - ${formatCurrency(currentCard.value || 5000000)}`
@@ -316,31 +314,28 @@ const SwipeInterface = ({ userType }: SwipeInterfaceProps) => {
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-primary" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Timeline</p>
-                      <p className="font-semibold">3-6 months</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Timeline</p>
+                      <p className="font-semibold text-sm sm:text-base">3-6 months</p>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">
                     {userType === 'buyer' ? 'Industry' : 'Experience'}
                   </p>
-                  <p className="font-medium">
-                    {userType === 'buyer' 
-                      ? currentCard.industry || 'Technology'
-                      : '15+ years M&A'
-                    }
+                  <p className="font-medium text-sm sm:text-base">
+                    {userType === 'buyer' ? currentCard.industry || 'Technology' : '15+ years M&A'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">
                     {userType === 'buyer' ? 'Business Type' : 'Industries of Interest'}
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1 sm:gap-2">
                     {['SaaS', 'E-commerce', 'FinTech'].map((industry, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
+                      <Badge key={index} variant="outline" className="text-xs sm:text-sm">
                         {industry}
                       </Badge>
                     ))}
@@ -348,12 +343,12 @@ const SwipeInterface = ({ userType }: SwipeInterfaceProps) => {
                 </div>
 
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2">About</p>
-                  <p className="text-sm leading-relaxed">{currentCard.description}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">About</p>
+                  <p className="text-sm sm:text-base leading-relaxed">{currentCard.description}</p>
                 </div>
 
                 <div className="pt-2 border-t">
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Active {currentCard.time}
                   </p>
                 </div>
@@ -363,27 +358,27 @@ const SwipeInterface = ({ userType }: SwipeInterfaceProps) => {
         </motion.div>
 
         {/* Action buttons */}
-        <div className="flex justify-center gap-8 mt-8">
+        <div className="flex justify-center gap-6 sm:gap-8 mt-6 sm:mt-8">
           <Button
             variant="outline"
             size="icon"
-            className="w-14 h-14 rounded-full border-2 border-destructive/20 hover:border-destructive hover:bg-destructive/10"
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 border-destructive/20 hover:border-destructive hover:bg-destructive/10"
             onClick={() => handleAction('pass')}
           >
-            <X className="h-6 w-6 text-destructive" />
+            <X className="h-5 w-5 sm:h-6 sm:w-6 text-destructive" />
           </Button>
           
           <Button
             variant="outline"
             size="icon"
-            className="w-14 h-14 rounded-full border-2 border-primary/20 hover:border-primary hover:bg-primary/10"
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 border-primary/20 hover:border-primary hover:bg-primary/10"
             onClick={() => handleAction('like')}
           >
-            <Heart className="h-6 w-6 text-primary" />
+            <Heart className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           </Button>
         </div>
 
-        {/* Match indicator overlays */}
+        {/* Match overlays */}
         <motion.div
           className="absolute inset-0 flex items-center justify-center pointer-events-none"
           style={{ 
@@ -391,7 +386,7 @@ const SwipeInterface = ({ userType }: SwipeInterfaceProps) => {
             rotate: useTransform(x, [50, 150], [-10, 0])
           }}
         >
-          <div className="bg-success text-white px-6 py-3 rounded-full font-bold text-lg border-4 border-white shadow-lg">
+          <div className="bg-success text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full font-bold text-sm sm:text-lg border-4 border-white shadow-lg">
             INTERESTED
           </div>
         </motion.div>
@@ -403,7 +398,7 @@ const SwipeInterface = ({ userType }: SwipeInterfaceProps) => {
             rotate: useTransform(x, [-150, -50], [0, 10])
           }}
         >
-          <div className="bg-destructive text-white px-6 py-3 rounded-full font-bold text-lg border-4 border-white shadow-lg">
+          <div className="bg-destructive text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full font-bold text-sm sm:text-lg border-4 border-white shadow-lg">
             PASS
           </div>
         </motion.div>

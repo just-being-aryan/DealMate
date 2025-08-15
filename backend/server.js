@@ -10,11 +10,14 @@ import userRoutes from "./routes/user.routes.js";
 dotenv.config()
 connectDB()
 
-
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://deal-mate-rho.vercel.app"
+]
 
 const app = express()
 app.use(cors({
-  origin: "https://deal-mate-rho.vercel.app", 
+  origin: allowedOrigins, 
   credentials: true, 
 }))
 
@@ -24,7 +27,7 @@ app.get('/', (req,res) => {
     res.send('API is running...')
 })
 
-app.use(errorMiddleware)
+
 
 
 //routes
@@ -37,3 +40,5 @@ const PORT = process.env.PORT || 8000
 app.listen(PORT, () => {
     console.log(`Server is running on PORT ${PORT}`)
 })
+
+app.use(errorMiddleware)

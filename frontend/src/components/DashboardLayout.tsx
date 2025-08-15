@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import { motion } from 'framer-motion'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,7 @@ import {
   DollarSign 
 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface DashboardLayoutProps {
   userType: 'buyer' | 'seller'
@@ -31,6 +32,8 @@ const DashboardLayout = ({
   currentSection, 
   onSectionChange 
 }: DashboardLayoutProps) => {
+  const router = useRouter()
+
   const navigationItems = [
     {
       id: 'dashboard',
@@ -55,45 +58,31 @@ const DashboardLayout = ({
   const handleDeleteProfile = async () => {
     const confirmed = window.confirm(
       'Are you sure you want to delete your profile? This action cannot be undone.'
-    );
+    )
     
     if (confirmed) {
       try {
-        const { deleteUserProfile, clearAuth, debugAuth } = await import('../utils/api');
-        
-        // Debug auth status first
-        debugAuth();
-
-        // Call the delete API
-        await deleteUserProfile();
-        
-        // Clear authentication data
-        clearAuth();
-        
-        alert('Your profile has been successfully deleted.');
-        window.location.href = '/';
-        
+        const { deleteUserProfile, clearAuth } = await import('../utils/api')
+        await deleteUserProfile()
+        clearAuth()
+        alert('Your profile has been successfully deleted.')
+        window.location.href = '/'
       } catch (error: any) {
-        console.error('Error deleting profile:', error);
-        alert(`Failed to delete profile: ${error.message || 'Please try again.'}`);
+        console.error('Error deleting profile:', error)
+        alert(`Failed to delete profile: ${error.message || 'Please try again.'}`)
       }
     }
-  };
+  }
 
-  const handleDebugAuth = async () => {
-    try {
-      const { debugAuth } = await import('../utils/api');
-      const authStatus = debugAuth();
-      alert(`Auth Status:\nToken: ${authStatus.token ? 'Present' : 'Missing'}\nUser: ${authStatus.userData ? authStatus.userData.name : 'None'}\n\nCheck console for details.`);
-    } catch (error) {
-      console.error('Debug error:', error);
-    }
-  };
+  const handleAdjustPreference = () => {
+    if (userType === 'buyer') router.push('/buyerOnboarding')
+    else router.push('/sellerOnboarding')
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/10 to-accent/10">
       <div className="max-w-7xl mx-auto p-6">
-        {/* Header with Back Button */}
+        {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -110,7 +99,6 @@ const DashboardLayout = ({
               {userType} Dashboard
             </Badge>
           </div>
-          
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Welcome back, {username}!
           </h1>
@@ -130,12 +118,10 @@ const DashboardLayout = ({
         >
           <Card className="p-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              {/* Navigation Items */}
               <div className="flex flex-wrap gap-2">
                 {navigationItems.map((item, index) => {
                   const Icon = item.icon
                   const isActive = currentSection === item.id
-                  
                   return (
                     <motion.div
                       key={item.id}
@@ -157,24 +143,31 @@ const DashboardLayout = ({
                       >
                         <Icon className={`h-4 w-4 ${isActive ? 'scale-110' : ''} transition-transform`} />
                         <span className="font-medium">{item.label}</span>
-                        
-                        {/* Active indicator */}
                         {isActive && (
                           <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-current rounded-full" />
                         )}
-                        
-                        {/* Hover tooltip */}
-                        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 -translate-y-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-50">
-                          <div className="bg-popover text-popover-foreground text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
-                            {item.description}
-                          </div>
-                        </div>
                       </Button>
                     </motion.div>
                   )
                 })}
+
+                {/* Adjust Preference Button */}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleAdjustPreference}
+                    className="group relative flex items-center gap-2 px-4 py-2 transition-all duration-300 hover:bg-secondary/80 hover:scale-105"
+                  >
+                    <span className="font-medium">Adjust Preference</span>
+                  </Button>
+                </motion.div>
               </div>
-              
+
               {/* Delete Profile Button */}
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
@@ -189,22 +182,15 @@ const DashboardLayout = ({
                 >
                   <Trash2 className="h-4 w-4 transition-transform" />
                   <span className="font-medium">Delete Profile</span>
-                  
-                  {/* Hover tooltip */}
-                  <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 -translate-y-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-50">
-                    <div className="bg-popover text-popover-foreground text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
-                      Remove your account
-                    </div>
-                  </div>
                 </Button>
               </motion.div>
             </div>
           </Card>
         </motion.div>
 
-        {/* Content Area */}
+        {/* Content */}
         <motion.div
-          key={currentSection} // This ensures the content re-animates when section changes
+          key={currentSection}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
