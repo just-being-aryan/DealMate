@@ -1,6 +1,6 @@
 Live Link - > https://deal-mate-rho.vercel.app/
 
-Test Credentials for Seller :
+Test Credentials for Buyer :
 mail : aryan@gmail.com
 password : aryanaryan
 
